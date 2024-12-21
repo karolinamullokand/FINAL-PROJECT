@@ -1,7 +1,7 @@
-title: "FINAL PROJECT"
-author: Karolina Mullokand
-output: html_document
-date: "2024-12-20"
+# title: "FINAL PROJECT"
+# author: Karolina Mullokand
+# output: html_document
+# date: "2024-12-20"
 ---
 
 ```{r setup, include=FALSE}
