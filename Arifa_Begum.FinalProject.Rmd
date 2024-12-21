@@ -1,0 +1,626 @@
+---
+title: "Project"
+author: "Nene Diallo"
+date: "2024-12-04"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+load("/Users/ari3/Downloads/SCF2022 (1).RData")
+View(data)
+
+library(dplyr)
+library(haven)
+library(forcats)
+summary(data$INCOME)
+
+```
+
+
+```{r}
+##General Group Hypothesis
+
+#We are going to explore how financial health varies between young adults (ages 18-30) and middle age/elderly individuals (ages 31-65) while measuring variables such as student loans, debt to income ratios, financial literacy, family structures, etc.
+
+#Null Hypothesis: The financial health of young adults is not going to differ from the financial health of middle age/elderly individuals.
+
+#Alternate Hypothesis: Middle age and elderly individuals will be more financially responsible and therefore they will have a better financial health than young adults.  
+
+```
+
+SETTING AGE SUBGROUPS
+```{r}
+# Subgroup: Young Adults (18-30)
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Subgroup: Middle Age/Elderly (31-65)
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Check the first few rows of each subset to ensure the division worked
+head(young_adults)
+head(middle_age_elderly)
+
+View(young_adults)
+View(middle_age_elderly)
+```
+
+RECODING SPENDMOR VARIABLE
+```{r}
+# Ensure SPENDMOR is a factor
+data$SPENDMOR <- as.factor(data$SPENDMOR)
+
+# Remove rows where SPENDMOR is "4" or "5"
+data <- data %>%
+  filter(!(SPENDMOR %in% c("4", "5")))
+
+# Recode SPENDMOR to Spending_numeric
+data$Spending_numeric <- forcats::fct_recode(data$SPENDMOR, 
+                                             "Spending Exceeding Income" = "1", 
+                                             "Spending Equal to Income" = "2", 
+                                             "Spending Less than Income" = "3")
+
+# Check the recoded column
+summary(data$Spending_numeric)
+
+# View the unique values to confirm correctness
+table(data$Spending_numeric)
+
+# Subgroup: Young Adults (18-30)
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30) %>%
+  mutate(Spending_numeric = forcats::fct_recode(SPENDMOR, 
+                                                "Spending Exceeding Income" = "1", 
+                                                "Spending Equal to Income" = "2", 
+                                                "Spending Less than Income" = "3"))
+
+# Subgroup: Middle Age/Elderly (31-65)
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65) %>%
+  mutate(Spending_numeric = forcats::fct_recode(SPENDMOR, 
+                                                "Spending Exceeding Income" = "1", 
+                                                "Spending Equal to Income" = "2", 
+                                                "Spending Less than Income" = "3"))
+
+# Check the results for each subgroup
+summary(young_adults$Spending_numeric)
+summary(middle_age_elderly$Spending_numeric)
+
+```
+
+RECODE FAMILY STRUCTURE
+```{r}
+#FAMSTRUCT recode
+
+data$FAMSTRUCT <- as.factor(data$FAMSTRUCT)
+data <- data %>% filter(FAMSTRUCT != "5")
+data$Family_numeric <- fct_recode(data$FAMSTRUCT, 
+                                "Single Individual" = "1", 
+                                "Married" = "2", 
+                                "Single Parent" = "3", 
+                                "Other Family Type" = "4")
+# Remove NA values from the Family_numeric column
+data <- data %>% filter(!is.na(Family_numeric))
+
+# View the resulting column of recoded values
+summary(data$Family_numeric)
+```
+
+
+RECODE ASSET VARIABLE
+```{r}
+# Recode ASSET
+data$asset_midpoint <- ifelse(data$ASSET == 0, "No assets",
+                       ifelse(data$ASSET < 10000, "Less than $10k",
+                       ifelse(data$ASSET >= 10000 & data$ASSET < 25000, "$10k - $24.9k",
+                       ifelse(data$ASSET >= 25000 & data$ASSET < 50000, "$25k - $49.9k",
+                       ifelse(data$ASSET >= 50000 & data$ASSET < 100000, "$50k - $99.9k",
+                       ifelse(data$ASSET >= 100000 & data$ASSET < 500000, "$100k - $499.9k",
+                       ifelse(data$ASSET >= 500000 & data$ASSET < 1000000, "$500k - $999.9k",
+                       ifelse(data$ASSET >= 1000000 & data$ASSET < 5000000, "$1M - $4.9M",
+                       ifelse(data$ASSET >= 5000000, "$5M+", NA)))))))))
+
+# Handle NA values in asset_midpoint
+data$asset_midpoint[is.na(data$asset_midpoint)] <- "Unknown"
+
+# Subgroup: Young Adults
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Check young_adults
+str(young_adults)
+summary(young_adults$asset_midpoint)
+
+# Ensure asset_midpoint is ordered
+young_adults$asset_midpoint <- factor(young_adults$asset_midpoint,
+                                      levels = c("No assets", "Less than $10k", "$10k - $24.9k", "$25k - $49.9k",
+                                                 "$50k - $99.9k", "$100k - $499.9k", "$500k - $999.9k",
+                                                 "$1M - $4.9M", "$5M+", "Unknown"))
+
+
+# Subgroup: Middle Age/Elderly
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Check young_adults
+str(middle_age_elderly)
+summary(middle_age_elderly$asset_midpoint)
+
+# Ensure asset_midpoint is ordered
+middle_age_elderly$asset_midpoint <- factor(middle_age_elderly$asset_midpoint,
+                                      levels = c("No assets", "Less than $10k", "$10k - $24.9k", "$25k - $49.9k",
+                                                 "$50k - $99.9k", "$100k - $499.9k", "$500k - $999.9k",
+                                                 "$1M - $4.9M", "$5M+", "Unknown"))
+```
+
+GRAPH FOR ASSETS VS SPENDING HABIT (YOUNG ADULTS)
+```{r}
+# Filter for Young Adults
+young_adults_data <- summary_data %>% filter(subgroup == "Young Adults")
+
+# Create the plot for Young Adults
+p <- ggplot(young_adults_data, aes(x = asset_midpoint, y = Count, fill = Spending_numeric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = custom_colors) +
+  labs(
+    title = "Comparison of Asset Levels and Spending Habits (Young Adults)",
+    x = "Asset Levels",
+    y = "Number of People",
+    fill = "Spending Habits"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert to interactive plot
+ggplotly(p)
+```
+
+GRAPH FOR ASSETS VS SPENDING HABIT (MIDDLE AGE/ELDERLY)
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(forcats)
+
+# Define custom colors for Spending_numeric levels
+custom_colors <- c(
+  "Spending Exceeded Income" = "pink",
+  "Spending Equaled Income" = "purple",
+  "Spending Less Than Income" = "blue"
+)
+
+# Filter for Middle Age/Elderly and clean the data
+middle_age_elderly_data <- summary_data %>%
+  filter(subgroup == "Middle Age/Elderly") %>% 
+  mutate(
+    # Ensure Spending_numeric matches the color keys
+    Spending_numeric = forcats::fct_recode(
+      Spending_numeric,
+      "Spending Exceeded Income" = "1",
+      "Spending Equaled Income" = "2",
+      "Spending Less Than Income" = "3"
+    )
+  ) %>%
+  filter(!is.na(Spending_numeric)) # Remove rows with NA in Spending_numeric
+
+# Create the plot for Middle Age/Elderly
+p <- ggplot(middle_age_elderly_data, aes(x = asset_midpoint, y = Count, fill = Spending_numeric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = custom_colors) +  # Apply custom colors
+  labs(
+    title = "Comparison of Asset Levels and Spending Habits (Middle Age/Elderly)",
+    x = "Asset Levels",
+    y = "Number of People",
+    fill = "Spending Habits"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert to interactive plot
+ggplotly(p)
+```
+
+
+RECODE HOUSING COSTS (HOW MUCH EACH PERSON PAID FOR THEIR HOUSE)
+```{r}
+data$houses_midpoint <- ifelse(data$ASSET >= 0 & data$ASSET < 100000, "Less than $100k",
+                       ifelse(data$ASSET >= 100000 & data$ASSET < 500000, "$100k - $500k",
+                       ifelse(data$ASSET >= 500000 & data$ASSET < 1000000, "$500k - $1M",
+                       ifelse(data$ASSET >= 1000000 & data$ASSET < 5000000, "$1M - $5M",
+                       ifelse(data$ASSET >= 5000000 & data$ASSET < 10000000, "$5M - $10M",
+                       ifelse(data$ASSET >= 10000000, "$5M+", NA))))))
+
+
+data$houses_midpoint[is.na(data$houses_midpoint)] <- "Unknown"
+
+# Subgroup: Young Adults
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Check young_adults
+str(young_adults)
+summary(young_adults$houses_midpoint)
+
+
+young_adults$houses_midpoint <- factor(young_adults$houses_midpoint,
+                                      levels = c("Less than $100k", "$100k - $500k", "$500k - $1M", "$1M - $5M",
+                                                 "$5M - $10M", "$10M+", "Unknown")) 
+
+
+# Subgroup: Middle Age/Elderly
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Check young_adults
+str(middle_age_elderly)
+summary(middle_age_elderly$houses_midpoint)
+
+# Ensure asset_midpoint is ordered
+middle_age_elderly$houses_midpoint <- factor(middle_age_elderly$houses_midpoint,
+                                      levels = c("Less than $100k", "$100k - $500k", "$500k - $1M", "$1M - $5M",
+                                                 "$5M - $10M", "$10M+", "Unknown")) 
+```
+
+GRAPH FOR HOUSING PRICE PAID (YOUNG ADULTS)
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Filter and recode for young adults (18-30)
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30) %>%
+  mutate(
+    Family_numeric = factor(FAMSTRUCT, levels = c("1", "2", "3", "4"),
+                            labels = c("Single Individual", "Married", "Single Parent", "Other Family Type")),
+    houses_midpoint = cut(HOUSES,
+                          breaks = c(-Inf, 100000, 500000, 1000000, 5000000, 10000000, Inf),
+                          labels = c("Less than $100k", "$100k - $500k", "$500k - $1M",
+                                     "$1M - $5M", "$5M - $10M", "$10M+"),
+                          right = FALSE)
+  )
+
+# Plot for young adults
+plot_young_adults <- ggplot(young_adults, aes(x = houses_midpoint, fill = Family_numeric)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Housing Costs by Family Structure (Ages 18-30)",
+    x = "How Much Did They Pay?",
+    y = "Count",
+    fill = "Household Family Structures"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert the ggplot object to an interactive plot
+interactive_plot_young_adults <- ggplotly(plot_young_adults)
+
+# Display the interactive plot
+interactive_plot_young_adults
+
+```
+
+
+GRAPH FOR HOUSING PRICE PAID (MIDDLE AGE/ELDERLY)
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Filter and recode for middle-aged/elderly (31-65)
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65) %>%
+  mutate(
+    Family_numeric = factor(FAMSTRUCT, levels = c("1", "2", "3", "4"),
+                            labels = c("Single Individual", "Married", "Single Parent", "Other Family Type")),
+    houses_midpoint = cut(HOUSES,
+                          breaks = c(-Inf, 100000, 500000, 1000000, 5000000, 10000000, Inf),
+                          labels = c("Less than $100k", "$100k - $500k", "$500k - $1M",
+                                     "$1M - $5M", "$5M - $10M", "$10M+"),
+                          right = FALSE)
+  )
+
+# Plot for middle-aged/elderly
+plot_middle_age_elderly <- ggplot(middle_age_elderly, aes(x = houses_midpoint, fill = Family_numeric)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Housing Costs by Family Structure (Ages 31-65)",
+    x = "How Much Did They Pay?",
+    y = "Count",
+    fill = "Household Family Structures"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert the ggplot object to an interactive plot
+interactive_plot_middle_age_elderly <- ggplotly(plot_middle_age_elderly)
+
+# Display the interactive plot
+interactive_plot_middle_age_elderly
+```
+
+COMBINING FOOD EXPENSES
+```{r}
+# Create a new column for total food expenses
+data <- data %>%
+  mutate(TotalFoodExpenses = FOODHOME + FOODAWAY + FOODDELV)
+
+# Subgroup: Young Adults
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Subgroup: Middle Age/Elderly
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Recode Food Expense
+data$food_expense <- ifelse(data$TotalFoodExpenses >= 0 & data$ASSET < 10000, "Less than $10k",
+                       ifelse(data$ASSET >= 10000 & data$ASSET < 25000, "$10k - $25k",
+                       ifelse(data$ASSET >= 25000 & data$ASSET < 50000, "$25k - $50k",
+                       ifelse(data$ASSET >= 50000 & data$ASSET < 75000, "$50k - $75k",
+                       ifelse(data$ASSET >= 75000 & data$ASSET < 100000, "$75k - $100k",
+                       ifelse(data$ASSET >= 100000, "$100k+", NA))))))
+
+# Handle NA values in asset_midpoint
+data$food_expense[is.na(data$food_expense)] <- "Unknown"
+
+# Subgroup: Young Adults
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Check young_adults
+str(young_adults)
+summary(young_adults$food_expense)
+
+# Ensure asset_midpoint is ordered
+young_adults$food_expense <- factor(young_adults$food_expense,
+                                      levels = c("Less than $10k", "$10k - $25k", "$25k - $50k", "$50k - $75k",
+                                                 "$75k - $100k", "$100k+", "Unknown")) 
+
+
+# Subgroup: Middle Age/Elderly
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Check young_adults
+str(middle_age_elderly)
+summary(middle_age_elderly$food_expense)
+
+# Ensure asset_midpoint is ordered
+middle_age_elderly$houses_midpoint <- factor(middle_age_elderly$houses_midpoint,
+                                      levels = c("Less than $10k", "$10k - $25k", "$25k - $50k", "$50k - $75k",
+                                                 "$75k - $100k", "$100k+", "Unknown"))  
+```
+
+GRAPH FOR FOOD EXPENSES (YOUNG ADULTS) 
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Filter and recode for young adults (18-30)
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30) %>%
+  mutate(
+    Family_numeric = factor(FAMSTRUCT, levels = c("1", "2", "3", "4"),
+                            labels = c("Single Individual", "Married", "Single Parent", "Other Family Type")),
+    food_expense = cut(TotalFoodExpenses,
+                          breaks = c(-Inf, 10000, 25000, 50000, 75000, 100000, Inf),
+                          labels = c("Less than $10k", "$10k - $25k", "$25k - $50k", "$50k - $75k",
+                                                 "$75k - $100k", "$100k+"),
+                          right = FALSE)
+  )
+
+# Plot for young adults
+plot_young_adults <- ggplot(young_adults, aes(x = food_expense, fill = Family_numeric)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Food Expenses by Family Structure (Ages 18-30)",
+    x = "Food Expenses",
+    y = "Count",
+    fill = "Household Family Structures"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert the ggplot object to an interactive plot
+interactive_plot_young_adults <- ggplotly(plot_young_adults)
+
+# Display the interactive plot
+interactive_plot_young_adults
+```
+
+GRAPH FOR FOOD EXPENSE (MIDDLE AGE/ELDERLY)
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Filter and recode for young adults (18-30)
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65) %>%
+  mutate(
+    Family_numeric = factor(FAMSTRUCT, levels = c("1", "2", "3", "4"),
+                            labels = c("Single Individual", "Married", "Single Parent", "Other Family Type")),
+    food_expense = cut(TotalFoodExpenses,
+                          breaks = c(-Inf, 10000, 25000, 50000, 75000, 100000, Inf),
+                          labels = c("Less than $10k", "$10k - $25k", "$25k - $50k", "$50k - $75k",
+                                                 "$75k - $100k", "$100k+"),
+                          right = FALSE)
+  )
+
+# Plot for young adults
+plot_middle_age_elderly <- ggplot(middle_age_elderly, aes(x = food_expense, fill = Family_numeric)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Food Expenses by Family Structure (Ages 31-65)",
+    x = "Food Expenses",
+    y = "Count",
+    fill = "Household Family Structures"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert the ggplot object to an interactive plot
+interactive_plot_middle_age_elderly <- ggplotly(plot_middle_age_elderly)
+
+# Display the interactive plot
+interactive_plot_middle_age_elderly
+```
+
+LOGIT MODEL
+```{r}
+library(dplyr)
+
+# Recode Family_numeric for the entire dataset
+data <- data %>%
+  mutate(Family_numeric = ifelse(Family_numeric == "Single", 1, 0)) # Adjust as needed
+
+# Split data into subgroups
+young_adults <- data %>% filter(AGE >= 18 & AGE <= 30)
+middle_age_elderly <- data %>% filter(AGE >= 31 & AGE <= 65)
+
+# Logistic regression for young adults
+young_adults_logit <- glm(Family_numeric ~ asset_midpoint + houses_midpoint + food_expense, 
+                          data = young_adults, 
+                          family = binomial(link = "logit"))
+
+# Logistic regression for middle-age/elderly
+middle_age_elderly_logit <- glm(Family_numeric ~ asset_midpoint + houses_midpoint + food_expense, 
+                                data = middle_age_elderly, 
+                                family = binomial(link = "logit"))
+
+# Summarize the models
+summary(young_adults_logit)
+summary(middle_age_elderly_logit)
+
+```
+
+TYPE 1 TYPE 2 ERROR - YOUNG ADULTS
+```{r}
+pred_vals <- predict(young_adults_logit, young_adults, type = "response")
+pred_young_adults_logit <- (pred_vals > mean(pred_vals))
+table(pred = pred_young_adults_logit, true = young_adults$Family_numeric)
+```
+TYPE 1 TYPE 2 ERROR - MIDDLE AGE/ELDERLY
+```{r}
+pred_vals <- predict(middle_age_elderly_logit, middle_age_elderly, type = "response")
+pred_middle_age_elderly_logit <- (pred_vals > mean(pred_vals))
+table(pred = pred_middle_age_elderly_logit, true = middle_age_elderly$Family_numeric)
+```
+
+INCOME RECODE
+```{r}
+#Income recode
+data$income_midpoint <- ifelse(data$INCOME < 25000, "HH income less than $25k",
+                        ifelse(data$INCOME >= 25000 & data$INCOME < 35000, "HH income $25k - $34.9k",
+                        ifelse(data$INCOME >= 35000 & data$INCOME < 50000, "HH income $35k - $49.9k",
+                        ifelse(data$INCOME >= 50000 & data$INCOME < 75000, "HH income $50k - $74.9k",
+                        ifelse(data$INCOME >= 75000 & data$INCOME < 100000, "HH income $75k - $99.9k",
+                        ifelse(data$INCOME >= 100000 & data$INCOME < 150000, "HH income $100k - $149.9k",
+                        ifelse(data$INCOME >= 150000 & data$INCOME < 200000, "HH income $150k - $199.9k",
+                        ifelse(data$INCOME >= 200000 & data$INCOME < 500000, "HH income $200k - $499.9k",
+                        ifelse(data$INCOME >= 500000 & data$INCOME < 1000000, "HH income $500k - $999.9k", 
+                               "HH income $1M+")))))))))
+
+# Subgroup: Young Adults
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+
+# Check young_adults
+str(young_adults)
+summary(young_adults$income_midpoint)
+
+# Ensure asset_midpoint is ordered
+young_adults$income_midpoint <- factor(young_adults$income_midpoint,
+                                      levels = c("HH income $25k - $34.9k", "HH income $35k - $49.9k", "HH income $50k - $74.9k" ,"HH income $75k - $99.9k","HH income $100k - $149.9k", "HH income $150k - $199.9k", "HH income $200k - $499.9k", "HH income $500k - $999.9k")) 
+
+
+# Subgroup: Middle Age/Elderly
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+
+# Check young_adults
+str(middle_age_elderly)
+summary(middle_age_elderly$income_midpoint)
+
+# Ensure asset_midpoint is ordered
+middle_age_elderly$income_midpoint <- factor(middle_age_elderly$income_midpoint,
+                                      levels = c("HH income $25k - $34.9k", "HH income $35k - $49.9k", "HH income $50k - $74.9k" ,"HH income $75k - $99.9k","HH income $100k - $149.9k", "HH income $150k - $199.9k", "HH income $200k - $499.9k", "HH income $500k - $999.9k"))  
+```
+
+FOOD EXPENSE VS INCOME
+```{r}
+library(ggplot2)
+
+# Create scatter plot with limited ranges for income and food expenses
+ggplot(young_adults, aes(x = INCOME, y = TotalFoodExpenses)) +
+  geom_point(alpha = 0.6, color = "pink") +
+  geom_smooth(method = "lm", se = TRUE, color = "darkgreen") + # Optional trend line
+  labs(
+    title = "Scatter Plot of Food Expenses vs. Income (Young Adults)",
+    x = "Income",
+    y = "Food Expenses Yearly"
+  ) +
+  scale_x_continuous(limits = c(0, 100000), labels = scales::comma) + # Restrict x-axis range
+  scale_y_continuous(limits = c(0, 50000), labels = scales::comma) + # Restrict y-axis range
+  theme_minimal()
+
+
+
+# Create scatter plot with limited ranges for income and food expenses
+ggplot(middle_age_elderly, aes(x = INCOME, y = TotalFoodExpenses)) +
+  geom_point(alpha = 0.6, color = "pink") +
+  geom_smooth(method = "lm", se = TRUE, color = "darkgreen") + # Optional trend line
+  labs(
+    title = "Scatter Plot of Food Expenses vs. Income (Middle Age/Elderly)",
+    x = "Income",
+    y = "Food Expenses Yearly"
+  ) +
+  scale_x_continuous(limits = c(0, 100000), labels = scales::comma) + # Restrict x-axis range
+  scale_y_continuous(limits = c(0, 50000), labels = scales::comma) + # Restrict y-axis range
+  theme_minimal()
+```
+
+
+```{r}
+library(ggplot2)
+
+# Create scatter plot with limited ranges for income and food expenses
+ggplot(young_adults, aes(x = INCOME, y = RENT)) +
+  geom_point(alpha = 0.6, color = "violet") +
+  geom_smooth(method = "lm", se = TRUE, color = "orange") + # Optional trend line
+  labs(
+    title = "Scatter Plot of Rent vs. Income (Young Adults)",
+    x = "Income",
+    y = "Monthly Rent"
+  ) +
+  scale_x_continuous(limits = c(0, 100000), labels = scales::comma) + # Restrict x-axis range
+  scale_y_continuous(breaks = seq(0, 3000, by = 500), labels = scales::comma) + # Restrict y-axis range
+  theme_minimal()
+
+
+
+
+library(scales)
+
+ggplot(middle_age_elderly, aes(x = INCOME, y = RENT)) +
+  geom_point(alpha = 0.6, color = "violet") +
+  geom_smooth(method = "lm", se = TRUE, color = "orange") + # Optional trend line
+  labs(
+    title = "Scatter Plot of Rent vs. Income (Middle Age/Elderly",
+    x = "Income",
+    y = "Monthly Rent"
+  ) +
+  scale_x_continuous(limits = c(0, 100000), labels = comma) + # Restrict x-axis range
+  scale_y_continuous(limits = c(0, 5000, by = 500), labels = comma) + # Automatic breaks
+  theme_minimal()
+
+
+```
+

@@ -1,0 +1,364 @@
+```         
+    ---
+    title: "Project"
+    author: "Nene Diallo"
+    date: "2024-12-04"
+    output:
+      html_document: default
+    ---
+```
+
+```{r}
+setwd("/Users/karolinamullokand/Desktop/ECO_B2000")
+data <- read.csv("SCFP2022.csv")
+View(data)
+data$income_midpoint <- ifelse(data$INCOME < 25000, "HH income less than $25k",
+                        ifelse(data$INCOME >= 25000 & data$INCOME < 35000, "HH income $25k - $34.9k",
+                        ifelse(data$INCOME >= 35000 & data$INCOME < 50000, "HH income $35k - $49.9k",
+                        ifelse(data$INCOME >= 50000 & data$INCOME < 75000, "HH income $50k - $74.9k",
+                        ifelse(data$INCOME >= 75000 & data$INCOME < 100000, "HH income $75k - $99.9k",
+                        ifelse(data$INCOME >= 100000 & data$INCOME < 150000, "HH income $100k - $149.9k",
+                        ifelse(data$INCOME >= 150000 & data$INCOME < 200000, "HH income $150k - $199.9k",
+                        ifelse(data$INCOME >= 200000 & data$INCOME < 500000, "HH income $200k - $499.9k",
+                        ifelse(data$INCOME >= 500000 & data$INCOME < 1000000, "HH income $500k - $999.9k", 
+                               "HH income $1M+")))))))))
+table(data$income_midpoint)
+```
+
+```{r}
+#EDCU RECODE:
+library(forcats)
+data$EDUC <- as.factor(data$EDUC)
+data$educ_numeric <- fct_recode(data$EDUC, 
+                                "N/A or no schooling" = "-1",  # Less than 1st grade
+                                "1st, 2nd, 3rd, or 4th grade" = "1",  # 1st, 2nd, 3rd, or 4th grade
+                                "5th or 6th grade" = "2",  # 5th or 6th grade
+                                "7th or 8th grade" = "3",  # 7th or 8th grade
+                                "9th grade" = "4",  # 9th grade
+                                "10th grade" = "5",  # 10th grade
+                                "11th grade" = "6",  # 11th grade
+                                "12th grade, no diploma" = "7",  # 12th grade, no diploma
+                                "High school graduate or GED" = "8",  # High school graduate or GED
+                                "Some college but no degree" = "9",  # Some college but no degree
+                                "Associate degree in college - vocation program" = "10",  # Associate degree in college - vocation program
+                                "Associate degree in college - academic program" = "11",  # Associate degree in college - academic program
+                                "Bachelors degree" = "12",  # Bachelors degree
+                                "Masters degree" = "13",  # Masters degree
+                                "Professional school degree" = "14",  # Professional school degree
+                                "Doctorate degree" = "15")  # Doctorate degree
+
+# View the resulting column of numeric education levels
+summary(data$educ_numeric)
+
+```
+
+```{r}
+
+#Race recode
+
+data$RACE <- as.factor(data$RACE)
+data$Race_numeric <- fct_recode(data$RACE, 
+                                "White" = "1", 
+                                "Black or African American" = "2", 
+                                "American Indian or Alaska Native" = "3", 
+                                "Asian" = "4", 
+                                "Native Hawaiian or Other Pacific Islander" = "5")
+
+# View the resulting column of recoded race values
+summary(data$Race_numeric)
+#FINLIT DATA
+data$FINLIT <- as.factor(data$FINLIT)
+data$FINLIT_label <- fct_recode(as.factor(data$FINLIT), 
+                                "No financial literacy" = "0", 
+                                "Low financial literacy" = "1", 
+                                "Moderate financial literacy" = "2", 
+                                "High financial literacy" = "3")
+summary(data$FINLIT_label)
+# Recode DEBT based on ranges
+data$debt_midpoint <- ifelse(data$DEBT == 0, "No debt",
+                      ifelse(data$DEBT < 10000, "Less than $10k",
+                      ifelse(data$DEBT >= 10000 & data$DEBT < 25000, "$10k - $24.9k",
+                      ifelse(data$DEBT >= 25000 & data$DEBT < 50000, "$25k - $49.9k",
+                      ifelse(data$DEBT >= 50000 & data$DEBT < 100000, "$50k - $99.9k",
+                      ifelse(data$DEBT >= 100000 & data$DEBT < 200000, "$100k - $199.9k",
+                      ifelse(data$DEBT >= 200000 & data$DEBT < 500000, "$200k - $499.9k",
+                             "$500k+")))))))
+
+# View the resulting column of recoded debt levels
+table(data$debt_midpoint)
+
+# Convert FINLIT to numeric values (e.g., 1 for "No financial literacy", 2 for "Low financial literacy", etc.)
+data$FINLIT_numeric <- as.numeric(data$FINLIT)
+```
+
+```{r}
+## Age Subgroup
+# Subgroup 1: Young Adults (18-30)
+library(dplyr)
+young_adults <- data %>%
+  filter(AGE >= 18 & AGE <= 30)
+# Subgroup 2: Middle Age/Elderly (31-65)
+middle_age_elderly <- data %>%
+  filter(AGE >= 31 & AGE <= 65)
+# Check the first few rows of each subset to ensure the division worked
+head(young_adults)
+head(middle_age_elderly)
+
+```
+
+```{r}
+#Hypothesis test
+
+# Using a 95% confidence interval, we investigate whether higher levels of education are associated with improved financial literacy and better debt management compared to those with lower levels of education. 
+
+#Null Hypothesis:  Education has no effect on financial literacy or debt management.After accounting for age and race, educated individuals are not more likely to have higher financial literacy or better debt management than less educated individuals.
+#Alternative Hypothesis: Education positively impacts financial literacy and debt management.After accounting for age and race, educated individuals are more likely to have higher financial literacy and better debt management than less educated individuals.
+
+
+```
+
+```{r}
+
+# Fit the linear model with the numeric version of FINLIT
+lm_1_18 <- lm(FINLIT_numeric ~ educ_numeric + AGE + Race_numeric + debt_midpoint, data = young_adults)
+confint(lm_1_18, level = 0.95)
+# Summary of the linear model
+summary(lm_1_18)
+lm_1_31 <- lm(FINLIT_numeric ~ educ_numeric + AGE + Race_numeric + debt_midpoint, data = middle_age_elderly)
+confint(lm_1_31, level = 0.95)
+# Summary of the linear model
+summary(lm_1_31)
+
+```
+
+```{r}
+#Comparing the two lms: 
+
+#Younger adults (18–30 years) show significant gains in financial literacy with higher education, particularly at the bachelor's and master's levels, while moderate debt ($50k–$99.9k) positively influences their awareness. Middle adults (31–65 years), however, experience even greater benefits from advanced education, with professional degrees having the largest impact. Both groups exhibit racial disparities, but these are more pronounced in middle adults, where Black or African American individuals face stronger negative associations. Interestingly, while moderate debt is beneficial for both groups, higher debt (\( >200k \)) begins to negatively affect financial literacy in middle adults, indicating a divergence in how debt impacts financial decision-making across age groups.
+
+
+```
+
+```{r}
+
+## Education & Financial Literacy 18
+library(ggplot2)
+# Create a bar graph showing counts of financial literacy by education level
+ggplot(young_adults, aes(x = factor(educ_numeric), fill = factor(FINLIT_label))) +
+  geom_bar(position = "dodge") +  # Dodged bar chart for individual counts
+  labs(
+    title = "Count of Financial Literacy by Education Level for Young Adults",
+    x = "Education Level (Numeric)",
+    y = "Count",
+    fill = "Financial Literacy"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+## Education & Financial Literacy 31
+library(ggplot2)
+# Create a bar graph showing counts of financial literacy by education level
+ggplot(middle_age_elderly, aes(x = factor(educ_numeric), fill = factor(FINLIT_label))) +
+  geom_bar(position = "dodge") +  # Dodged bar chart for individual counts
+  labs(
+    title = "Count of Financial Literacy by Education Level for Middle aged",
+    x = "Education Level (Numeric)",
+    y = "Count",
+    fill = "Financial Literacy"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+## Debt & Financial Literacy 18
+library(ggplot2)
+# Update debt_midpoint with meaningful labels
+young_adults$debt_midpoint_label <- factor(young_adults$debt_midpoint,
+                                   levels = c("No debt", "Less than $10k", "$10k - $24.9k", "$25k - $49.9k",
+                                              "$50k - $99.9k", "$100k - $199.9k", "$200k - $499.9k", "$500k+"))
+# Create the bar plot
+ggplot(young_adults, aes(x = debt_midpoint_label, fill = FINLIT_label)) +
+  geom_bar(position = "dodge") +  # Dodged bar chart for individual counts
+  labs(
+    title = "Financial Literacy Levels by Debt Categories for Young Adults",
+    x = "Debt Ranges",
+    y = "Count",
+    fill = "Financial Literacy"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Debt & Financial Literacy 31
+library(ggplot2)
+# Update debt_midpoint with meaningful labels
+middle_age_elderly$debt_midpoint_label <- factor(middle_age_elderly$debt_midpoint,
+                                   levels = c("No debt", "Less than $10k", "$10k - $24.9k", "$25k - $49.9k",
+                                              "$50k - $99.9k", "$100k - $199.9k", "$200k - $499.9k", "$500k+"))
+# Create the bar plot
+ggplot(middle_age_elderly, aes(x = debt_midpoint_label, fill = FINLIT_label)) +
+  geom_bar(position = "dodge") +  # Dodged bar chart for individual counts
+  labs(
+    title = "Financial Literacy Levels by Debt Categories for Middle Aged",
+    x = "Debt Ranges",
+    y = "Count",
+    fill = "Financial Literacy"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#RESULTS:
+# Compare the linear models for young adults and middle-aged/elderly
+
+# Education
+# - Younger Adults: Higher education (e.g., Bachelor's, Master's, Professional) positively affects financial literacy, with larger effects for higher education levels.
+# - Middle-Age/Elderly: Similar trend, but stronger relationship with financial literacy due to accumulated experience and age.
+
+# Age
+# - Younger Adults: Age does not significantly affect financial literacy.
+# - Middle-Age/Elderly: Age has a significant negative impact on financial literacy, suggesting a decline with age.
+
+# Race
+# - Younger Adults: Negative relationship with Black or African American group, but positive effects for Asian and Native Hawaiian groups.
+# - Middle-Age/Elderly: Similar racial effects, but less pronounced negative effect for Black or African American group.
+
+# Debt Levels
+# - Younger Adults: Higher debt levels (e.g., $50k - $99.9k) positively affect financial literacy, with borderline significance for higher debt levels ($200k - $499.9k, $500k+).
+# - Middle-Age/Elderly: Debt effects are weaker overall, suggesting less influence of debt on financial literacy.
+
+# R-squared
+# - Younger Adults: R^2 = 0.2567, meaning 25.67% of financial literacy variation is explained by the model.
+# - Middle-Age/Elderly: Compare R^2 values directly, but residual standard errors suggest a similar or slightly higher explanatory power.
+
+# Overall Patterns
+# 1. Education has a significant impact on both groups, with larger effects in middle-age/elderly.
+# 2. Age is insignificant for younger adults, but negatively significant for middle-age/elderly.
+# 3. Debt influences financial literacy more in younger adults.
+# 4. Race impacts are similar but less pronounced for middle-age/elderly.
+
+#This comparison suggests that financial literacy is more strongly linked to education and debt levels for younger adults, whereas for middle-age/elderly individuals, age and accumulated education have a more pronounced impact.
+
+```
+
+```{r}
+#OLS model#1 predicted Values 18
+
+#To better understand the relationship between financial literacy and key demographic factors, I will use financial literacy as a binary variable, focusing on individuals with a financial literacy score above level 1. This approach allows for a clearer analysis of how various factors, such as education, age, and debt levels, influence financial literacy
+
+young_adults$FinLit_1_or_Above <- as.numeric(as.numeric(as.character(young_adults$FINLIT)) > 1)
+table(young_adults$FinLit_1_or_Above)
+
+
+pred_vals_ols1 <- predict(lm_1_18, young_adults)
+pred_model_ols1 <- (pred_vals_ols1 > mean(pred_vals_ols1))
+table(pred = pred_model_ols1, true = young_adults$FinLit_1_or_Above)
+
+#The model predicts whether young adults have financial literacy above level 1, with 439 young adults classified as having low financial literacy and 1,410 with higher financial literacy. It performs reasonably well overall, correctly classifying 399 true negatives and 856 true positives. However, there are some false positives (86) and false negatives (554), suggesting that the model occasionally misclassifies financial literacy levels. This indicates that while financial literacy is a significant factor, other variables may also influence the predictions.
+
+
+#OLS model#1 predicted Values 31
+
+middle_age_elderly$FinLit_1_or_Above <- as.numeric(as.numeric(as.character(middle_age_elderly$FINLIT)) > 1)
+table(middle_age_elderly$FinLit_1_or_Above)
+
+
+pred_vals_ols1 <- predict(lm_1_31, middle_age_elderly)
+pred_model_ols1 <- (pred_vals_ols1 > mean(pred_vals_ols1))
+table(pred = pred_model_ols1, true = middle_age_elderly$FinLit_1_or_Above)
+
+#The model predicts whether middle-aged individuals have financial literacy above level 1, with 2,520 classified as having low financial literacy and 7,808 with higher financial literacy. It performs well overall, correctly classifying 1,915 true negatives and 7,008 true positives. However, there are some false positives (605) and false negatives (5,232), suggesting that the model occasionally misclassifies financial literacy levels. This indicates that while financial literacy is an important predictor, other factors may also contribute to the predictions.
+
+
+#Financial Literacy Levels: A greater proportion of middle-aged individuals (12,240) exhibit higher financial literacy compared to young adults (1,410). This suggests that financial literacy tends to increase with age, possibly due to more life experience or greater exposure to financial decision-making.
+#Model Performance: Both groups have a similar overall model performance, with relatively high true positive rates and some false positives and negatives. However, the number of false negatives is notably higher for middle-aged individuals (5,232) compared to young adults (554), which might indicate that the model struggles more with accurately classifying financial literacy for middle-aged individuals.
+#Implications: This comparison suggests that while financial literacy is important in both age groups, the factors influencing it may differ. The model may need further refinement to reduce misclassifications, particularly for middle-aged individuals. Additionally, the differences in financial literacy levels may indicate that younger adults could benefit from targeted interventions to improve their financial literacy, while middle-aged individuals may require different strategies to further enhance their financial knowledge.
+
+
+```
+
+```{r}
+
+#Logit model 18
+model_logit_18 <- glm(FinLit_1_or_Above ~ educ_numeric + AGE + Race_numeric + debt_midpoint, data = young_adults,family = binomial)
+summary(model_logit_18)
+
+#Logit model 31
+model_logit_31 <- glm(FinLit_1_or_Above ~ educ_numeric + AGE + Race_numeric + debt_midpoint, data = middle_age_elderly,family = binomial)
+summary(model_logit_31)
+```
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+
+# Calculate predicted probabilities for young adults (model_logit_18)
+young_adults$predicted_prob_18 <- predict(model_logit_18, type = "response")
+
+# Scatter plot for young adults with predicted probabilities
+ggplot(young_adults, aes(x = AGE, y = predicted_prob_18)) +
+  geom_point(alpha = 0.6, color = "red") +  # Scatter plot with semi-transparent points
+  geom_smooth(method = "loess", se = FALSE, color = "darkgreen") +  # Add a smooth line without confidence interval
+  labs(title = "Predicted Probability of Financial Literacy for Young Adults",
+       x = "Age", 
+       y = "Predicted Probability of Financial Literacy") +
+  theme_minimal()
+
+# Calculate predicted probabilities for middle-aged and elderly adults (model_logit_31)
+middle_age_elderly$predicted_prob_31 <- predict(model_logit_31, type = "response")
+
+# Scatter plot for middle-aged and elderly adults with predicted probabilities
+ggplot(middle_age_elderly, aes(x = AGE, y = predicted_prob_31)) +
+  geom_point(alpha = 0.6, color = "red") +  # Scatter plot with semi-transparent points
+  geom_smooth(method = "loess", se = FALSE, color = "darkgreen") +  # Add a smooth line without confidence interval
+  labs(title = "Predicted Probability of Financial Literacy for Middle-Aged & Elderly Adults",
+       x = "Age", 
+       y = "Predicted Probability of Financial Literacy") +
+  theme_minimal()
+
+
+```
+
+```{r}
+
+#- For young adults, higher education levels (e.g., some college, bachelor’s, and professional degrees) show strong significance.
+  # - For middle-aged adults, lower education levels (e.g., 1st-4th grade) also have a significant impact on financial literacy.
+
+# Both models show age has a significant positive effect, but the middle-aged adults show a more pronounced effect, indicating that age may be a stronger predictor of financial literacy in this group.
+
+# Race is significant in both groups. For young adults, African American, Native American, and Asian categories show significance.
+# In the middle-aged model, race also plays a significant role, with additional categories like Native Hawaiian/Other Pacific Islander being significant.
+
+# Debt levels influence financial literacy in both groups, with young adults showing strong effects for having no debt and debt in the $50k-$99.9k range.
+
+#The middle-aged group has a broader range of significant debt categories, including lower debt levels (e.g., $10k-$24.9k, $25k-$49.9k), suggesting that debt may be more influential in this age group.
+
+### Conclusion: The models highlight that while both age groups show clear relationships between education, race, age, and debt with financial literacy, the middle-aged adults' model is more complex, reflecting a wider variety of significant factors. This suggests that over time, experiences such as education and debt have a stronger and more nuanced impact on financial literacy in older individuals.
+```
+
+```{r}
+
+#Predicted Values for logit 18
+pred_vals <- predict(model_logit_18, young_adults, type = "response")
+pred_model_logit_18 <- (pred_vals > mean(pred_vals))
+table(pred = pred_model_logit_18, true = young_adults$FinLit_1_or_Above)
+
+
+#The model predicts whether young adults have financial literacy above level 1, with 446 young adults classified as having low financial literacy and 964 with higher financial literacy. It performs reasonably well overall, correctly classifying 373 true negatives and 964 true positives. However, there are some false positives (112) and false negatives (446), suggesting that the model occasionally misclassifies financial literacy levels. This indicates that while financial literacy is a significant factor, other variables, such as age, education, race, and debt, may also influence the predictions.
+
+#Predicted Values for logit 31
+pred_vals <- predict(model_logit_31, middle_age_elderly, type = "response")
+pred_model_logit_31 <- (pred_vals > mean(pred_vals))
+table(pred = pred_model_logit_31, true = middle_age_elderly$FinLit_1_or_Above)
+
+#The model predicts whether middle-aged and elderly individuals have financial literacy above level 1, with 1,795 individuals classified as having low financial literacy and 7,957 with higher financial literacy. It performs reasonably well overall, correctly classifying 1,795 true negatives and 7,957 true positives. However, there are some false positives (725) and false negatives (4,283), suggesting that the model occasionally misclassifies financial literacy levels. This indicates that while financial literacy is a significant factor, other variables, such as age, education, race, and debt, may also influence the predictions.
+
+#Summary:
+#Young Adults: The model is relatively balanced but slightly prone to false negatives, misclassifying some individuals with high financial literacy as low.
+
+#Middle-Aged/Elderly: The model tends to misclassify a larger proportion of middle-aged and elderly individuals as having low financial literacy (False Negatives), despite correctly identifying a high number of True Positives. The model is less sensitive to financial literacy in this group compared to young adults, potentially due to other factors like age, education, or debt influencing the model’s predictions.
+
+```
